@@ -2,7 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static long long counter = 0;   // shared global
+static long long counter = 0;                 
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
     long id;
@@ -12,7 +13,9 @@ typedef struct {
 void* worker(void* arg) {
     Task* t = (Task*)arg;
     for (long i = 0; i < t->iters; i++) {
-        counter++;  // intentionally no lock (data race)
+        pthread_mutex_lock(&mtx);
+        counter++;                            
+        pthread_mutex_unlock(&mtx);
     }
     return NULL;
 }
@@ -35,8 +38,8 @@ int main(int argc, char** argv) {
         pthread_join(threads[i], NULL);
     }
 
-    printf("Expected = %ld, Observed counter = %lld\n",
-           N * iters_per_thread, counter);
+    long long expected = (long long)N * iters_per_thread;
+    printf("Expected = %lld, Observed counter = %lld\n", expected, counter);
 
     free(threads);
     free(tasks);
